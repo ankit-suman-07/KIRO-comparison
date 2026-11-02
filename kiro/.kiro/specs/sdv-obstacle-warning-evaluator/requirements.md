@@ -150,3 +150,50 @@ The following are explicitly excluded and must not be implemented:
 - Persistence (files, databases).
 - Network communication.
 - Any additional public function, public class, or public logic beyond what is specified above. (Private helpers are permitted; see AC-1.3.)
+
+---
+
+## Change Request CR-1 — Speed-Dependent Warning Distance
+
+**Requested change:** When speed exceeds 50 km/h, increase the warning distance to 15 metres. Keep the braking threshold and all other rules unchanged.
+
+### Updated FR-3 — Rule Priority (CR-1)
+
+The rule table from FR-3 is amended as follows. All other rules remain identical.
+
+| Priority | Condition | Returned status |
+|---|---|---|
+| 4 | `speed_kmh > 0` and `5 < distance_m <= warning_distance` | `"WARNING"` |
+| 5 | `speed_kmh > 0` and `distance_m > warning_distance` | `"CLEAR"` |
+
+Where `warning_distance` is defined as:
+- `10` when `speed_kmh <= 50`
+- `15` when `speed_kmh > 50`
+
+Speed exactly 50 does **not** exceed 50, so it keeps the 10 m threshold. The braking threshold (5 m) is unaffected by speed.
+
+### Updated FR-4 — Output Statuses (CR-1)
+
+The status descriptions for `WARNING` and `CLEAR` are amended:
+
+| Status | Meaning |
+|---|---|
+| `"WARNING"` | Vehicle moving; obstacle between 5 m (exclusive) and the warning distance (inclusive) |
+| `"CLEAR"` | Vehicle moving; obstacle beyond the warning distance |
+
+All other statuses and their meanings remain unchanged from FR-4.
+
+### New Acceptance Criteria (CR-1)
+
+- AC-4.10: `evaluate_obstacle(50, 10, True)` returns `"WARNING"` — speed exactly 50 keeps the 10 m threshold.
+- AC-4.11: `evaluate_obstacle(50, 10.01, True)` returns `"CLEAR"` — distance just above 10 m at speed 50.
+- AC-4.12: `evaluate_obstacle(50, 15, True)` returns `"CLEAR"` — at speed 50 the 15 m threshold does not apply.
+- AC-4.13: `evaluate_obstacle(just_above_50, 15, True)` returns `"WARNING"` — speed just above 50 activates the 15 m threshold (inclusive).
+- AC-4.14: `evaluate_obstacle(just_above_50, 15.01, True)` returns `"CLEAR"` — distance just above 15 m.
+- AC-4.15: `evaluate_obstacle(60, 15, True)` returns `"WARNING"` — 15 m boundary inclusive at speed 60.
+- AC-4.16: `evaluate_obstacle(60, 15.01, True)` returns `"CLEAR"` — just above 15 m boundary.
+- AC-4.17: `evaluate_obstacle(60, 10.01, True)` returns `"WARNING"` — a distance that returned `"CLEAR"` at baseline now returns `"WARNING"` above 50 km/h.
+- AC-4.18: `evaluate_obstacle(100, 15, True)` returns `"WARNING"` — 15 m boundary at high speed.
+- AC-4.19: `evaluate_obstacle(100, 15.01, True)` returns `"CLEAR"` — just above 15 m at high speed.
+- AC-4.20: `evaluate_obstacle(60, 5, True)` returns `"BRAKE"` — braking threshold unchanged at high speed.
+- AC-4.21: All baseline acceptance criteria AC-4.1–AC-4.9 continue to hold unchanged (speed 30, thresholds 5 m and 10 m).

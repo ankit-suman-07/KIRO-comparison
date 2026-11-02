@@ -6,6 +6,7 @@ Groups mirror design.md §6:
   - Input validation: sensor_healthy (AC-2.3.x)
   - Rule priority (AC-3.x)
   - Boundary values (AC-4.x)
+  - Speed-dependent warning threshold (AC-4.10–AC-4.14)
   - Large integer inputs
   - Purity (AC-5.1)
   - Module import side-effects (AC-1.1)
@@ -60,7 +61,7 @@ def test_any_positive_speed_counts_as_moving(speed):
 
 
 # ---------------------------------------------------------------------------
-# Boundary values (AC-4.x)
+# Boundary values — fixed 10 m threshold (speed <= 50) (AC-4.x)
 # ---------------------------------------------------------------------------
 
 @pytest.mark.parametrize("distance, expected", [
@@ -74,7 +75,7 @@ def test_any_positive_speed_counts_as_moving(speed):
     (100,                          "CLEAR"),    # AC-4.8
 ])
 def test_moving_thresholds(distance, expected):
-    # speed=30, fixed 10 m warning threshold
+    # speed=30 (< 50), fixed 10 m warning threshold
     assert evaluate_obstacle(30, distance, True) == expected
 
 
@@ -124,6 +125,81 @@ def test_minimum_nonzero_float_speed_returns_brake():
 
 
 # ---------------------------------------------------------------------------
+# Speed-dependent warning threshold (AC-4.10–AC-4.14)
+# ---------------------------------------------------------------------------
+# When speed exceeds 50 km/h, the warning distance extends from 10 m to 15 m.
+# The braking threshold (5 m) is unaffected. Speed exactly 50 keeps the 10 m
+# threshold because 50 does NOT exceed 50.
+
+just_above_50 = math.nextafter(50, math.inf)
+
+
+def test_speed_exactly_50_uses_10m_threshold():
+    # AC-4.10: speed == 50 does NOT exceed 50, so 10 m threshold still applies.
+    assert evaluate_obstacle(50, 10, True) == "WARNING"
+    assert evaluate_obstacle(50, 10.0, True) == "WARNING"
+
+
+def test_speed_exactly_50_above_10m_is_clear():
+    # AC-4.10: distance just above 10 m → CLEAR at speed 50.
+    assert evaluate_obstacle(50, math.nextafter(10, math.inf), True) == "CLEAR"
+    assert evaluate_obstacle(50, 10.01, True) == "CLEAR"
+
+
+def test_speed_exactly_50_at_15m_is_clear():
+    # AC-4.10: at speed 50, 15 m is well beyond the 10 m threshold → CLEAR.
+    assert evaluate_obstacle(50, 15, True) == "CLEAR"
+
+
+def test_speed_just_above_50_uses_15m_threshold():
+    # AC-4.11: speed just above 50 → 15 m threshold; 15 m inclusive → WARNING.
+    assert evaluate_obstacle(just_above_50, 15, True) == "WARNING"
+
+
+def test_speed_just_above_50_above_15m_is_clear():
+    # AC-4.11: distance just above 15 m → CLEAR.
+    assert evaluate_obstacle(just_above_50, math.nextafter(15, math.inf), True) == "CLEAR"
+
+
+def test_speed_60_15m_returns_warning():
+    # AC-4.12: speed 60 > 50, distance == 15 → WARNING (inclusive boundary).
+    assert evaluate_obstacle(60, 15, True) == "WARNING"
+
+
+def test_speed_60_just_above_15m_returns_clear():
+    # AC-4.12: speed 60 > 50, distance just above 15 → CLEAR.
+    assert evaluate_obstacle(60, 15.01, True) == "CLEAR"
+
+
+def test_speed_60_10m_returns_warning():
+    # AC-4.13: speed 60 > 50, 10 m is within the 15 m threshold → WARNING.
+    assert evaluate_obstacle(60, 10, True) == "WARNING"
+
+
+def test_speed_60_10_01m_returns_warning():
+    # AC-4.13: speed 60 > 50, 10.01 m was CLEAR at baseline but is now WARNING.
+    assert evaluate_obstacle(60, 10.01, True) == "WARNING"
+
+
+def test_speed_100_15m_returns_warning():
+    # AC-4.14: speed 100 > 50, distance == 15 → WARNING.
+    assert evaluate_obstacle(100, 15, True) == "WARNING"
+
+
+def test_speed_100_just_above_15m_returns_clear():
+    # AC-4.14: speed 100 > 50, distance just above 15 → CLEAR.
+    assert evaluate_obstacle(100, math.nextafter(15, math.inf), True) == "CLEAR"
+
+
+def test_brake_threshold_unchanged_at_high_speed():
+    # The 5 m braking boundary is unaffected by speed.
+    assert evaluate_obstacle(60, 5, True) == "BRAKE"
+    assert evaluate_obstacle(60, math.nextafter(5, math.inf), True) == "WARNING"
+    assert evaluate_obstacle(100, 5, True) == "BRAKE"
+    assert evaluate_obstacle(100, math.nextafter(5, math.inf), True) == "WARNING"
+
+
+# ---------------------------------------------------------------------------
 # Acceptance cases
 # ---------------------------------------------------------------------------
 
@@ -139,12 +215,19 @@ ACCEPTANCE_CASES = [
     (30,  20,    False, "SENSOR_FAULT"),
     (0,   0,     False, "SENSOR_FAULT"),
     (0.1, 4.9,   True,  "BRAKE"),
-    # High speed: threshold is still 10 m (no speed-dependent extension)
+    # Speed exactly 50: 10 m threshold still applies
+    (50,  10,    True,  "WARNING"),
+    (50,  10.01, True,  "CLEAR"),
+    (50,  15,    True,  "CLEAR"),
+    # Speed above 50: 15 m threshold applies
     (60,  10,    True,  "WARNING"),
-    (60,  10.01, True,  "CLEAR"),
-    (60,  15,    True,  "CLEAR"),
+    (60,  10.01, True,  "WARNING"),
+    (60,  15,    True,  "WARNING"),
+    (60,  15.01, True,  "CLEAR"),
     (100, 10,    True,  "WARNING"),
-    (100, 10.01, True,  "CLEAR"),
+    (100, 10.01, True,  "WARNING"),
+    (100, 15,    True,  "WARNING"),
+    (100, 15.01, True,  "CLEAR"),
 ]
 
 
@@ -163,7 +246,7 @@ def test_large_integer_speed_accepted():
 
 
 def test_large_integer_distance_accepted():
-    # 10**400 >> 10 m → CLEAR
+    # 10**400 >> 15 m → CLEAR
     assert evaluate_obstacle(30, 10 ** 400, True) == "CLEAR"
 
 

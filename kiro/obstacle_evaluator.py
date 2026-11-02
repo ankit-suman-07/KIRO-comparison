@@ -55,8 +55,12 @@ def evaluate_obstacle(speed_kmh, distance_m, sensor_healthy) -> str:
       "IDLE"         — vehicle is stationary and sensor is healthy
       "BRAKE"        — vehicle moving; obstacle at or within 5 m
       "WARNING"      — vehicle moving; obstacle between 5 m (exclusive)
-                       and 10 m (inclusive)
-      "CLEAR"        — vehicle moving; obstacle beyond 10 m
+                       and the warning distance (inclusive)
+      "CLEAR"        — vehicle moving; obstacle beyond the warning distance
+
+    The warning distance is 10 m normally, but rises to 15 m when speed
+    exceeds 50 km/h. The braking threshold (5 m) is unaffected by speed.
+    Speed exactly 50 does NOT exceed 50, so it keeps the 10 m threshold.
 
     Raises ValueError for any invalid input (see _validate_numeric and
     _validate_sensor for full rules).
@@ -73,6 +77,9 @@ def evaluate_obstacle(speed_kmh, distance_m, sensor_healthy) -> str:
         return "IDLE"
     if distance_m <= 5:
         return "BRAKE"
-    if distance_m <= 10:
+    # Above 50 km/h the warning distance extends to 15 m; otherwise 10 m.
+    # Speed exactly 50 does NOT exceed 50, so it keeps the 10 m threshold.
+    warning_distance = 15 if speed_kmh > 50 else 10
+    if distance_m <= warning_distance:
         return "WARNING"
     return "CLEAR"

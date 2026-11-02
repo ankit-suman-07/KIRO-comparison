@@ -175,3 +175,53 @@ No mocking, patching, or fixtures are needed. Every test is a direct call to `ev
 | `ValueError` for invalid inputs | Both helpers raise `ValueError` with a message; nothing is silently coerced |
 | Exact status strings | String literals appear once each in the function body; no dynamic construction |
 | pytest | Test file uses `pytest.raises` and plain `assert`; no unittest or other framework |
+
+---
+
+## Change Request CR-1 — Speed-Dependent Warning Distance
+
+**Requested change (from CR-1 in requirements.md):** When speed exceeds 50 km/h, increase the warning distance to 15 metres. Keep the braking threshold and all other rules unchanged.
+
+### Updated §3.3 — Rule Application (CR-1)
+
+Rule 4 in the execution order from §3.3 is replaced. All other steps remain identical.
+
+Before CR-1:
+```
+4. if distance_m <= 10  → return "WARNING"
+```
+
+After CR-1:
+```
+4. warning_distance = 15 if speed_kmh > 50 else 10
+   if distance_m <= warning_distance  → return "WARNING"
+```
+
+Speed exactly 50 does not exceed 50, so it keeps the 10 m threshold. The braking threshold (5 m) is unaffected by speed.
+
+### New §4.7 — Why compute `warning_distance` inline? (CR-1)
+
+The warning threshold depends on speed: 10 m when `speed_kmh <= 50`, 15 m when `speed_kmh > 50`. A single inline ternary `15 if speed_kmh > 50 else 10` keeps both threshold values in one place and makes the condition explicit. Using `>` (not `>=`) ensures speed exactly 50 keeps the 10 m threshold, since 50 does not exceed 50.
+
+An alternative using a named constant would require either two constants or a function — both add indirection without benefit for a two-value rule. The ternary mirrors the spec table directly.
+
+### Updated §5 — Data Flow Diagram (CR-1)
+
+```
+│     no → distance_m <= 5?                  │──► "BRAKE"
+│       no → warning = 15 if spd>50 else 10  │
+│             distance_m <= warning?          │──► "WARNING"
+│               no                           │──► "CLEAR"
+```
+
+All other nodes in the diagram from §5 are unchanged.
+
+### Updated §6 — Test Strategy (CR-1)
+
+A new test group is added:
+
+| Group | What it covers |
+|---|---|
+| Speed-dependent threshold | AC-4.10–AC-4.21: speed exactly 50 (10 m threshold), speed just above 50 (15 m threshold), 15 m boundary inclusive/exclusive, braking threshold unchanged |
+
+All existing test groups from §6 remain. Baseline cases (speed 30, 10 m threshold) are re-run to confirm no regressions.
