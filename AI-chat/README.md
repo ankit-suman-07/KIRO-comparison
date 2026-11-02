@@ -34,7 +34,7 @@ Sensor health must be a boolean. For valid inputs, rules run in this order:
 1. Unhealthy sensor: `SENSOR_FAULT`.
 2. Zero speed: `IDLE`.
 3. Distance at most 5 m: `BRAKE`.
-4. Distance at most 10 m: `WARNING`.
+4. Distance at most 10 m, or 15 m when speed exceeds 50 km/h: `WARNING`.
 5. Otherwise: `CLEAR`.
 
 The function has no I/O or persistent state. Importing it runs no demonstration.

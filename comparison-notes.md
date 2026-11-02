@@ -24,12 +24,12 @@ Change: increase warning distance to 15 metres when speed exceeds 50 km/h; keep 
 
 | Item | AI chat | Kiro Spec mode |
 |---|---|---|
-| Time to implement and verify the change | Not applied — AI-chat folder left at baseline intentionally | — |
-| Shared follow-up tests passed / total on first evaluation | 13 / 15 (fails at speed > 50: returns CLEAR instead of WARNING) | 15 / 15 |
-| Shared follow-up tests passed / total after corrections | Not applied | 15 / 15 (no corrections needed) |
-| Human corrections or edits needed | N/A | 0 |
-| Code, tests and documentation updated consistently? | No — change not applied; code, tests and spec all remain at baseline | Yes — `obstacle_evaluator.py`, `tests/test_obstacle_evaluator.py`, `requirements.md` (CR-1 section), `design.md` (CR-1 section), and `README.md` all updated |
-| Any regressions in unchanged behaviour? | N/A | No — all 34 baseline shared cases continue to pass; braking threshold at 5 m unaffected |
+| Time to implement and verify the change | ~2 min | — |
+| Shared follow-up tests passed / total on first evaluation | 15 / 15 after the change, run on Python 3.10 (13 / 15 before the change: failed at speed > 50, returned CLEAR instead of WARNING) | 15 / 15 |
+| Shared follow-up tests passed / total after corrections | 15 / 15 (no corrections needed) | 15 / 15 (no corrections needed) |
+| Human corrections or edits needed | 0 | 0 |
+| Code, tests and documentation updated consistently? | Partly — `obstacle_evaluator.py`, `tests/test_obstacle_evaluator.py` and `README.md` updated; `docs/project-overview.md` left unchanged and still states 10 m | Yes — `obstacle_evaluator.py`, `tests/test_obstacle_evaluator.py`, `requirements.md` (CR-1 section), `design.md` (CR-1 section), and `README.md` all updated |
+| Any regressions in unchanged behaviour? | No — 34 / 34 shared baseline cases and 127 / 127 AI-chat tests pass; braking threshold at 5 m unaffected | No — all 34 baseline shared cases continue to pass; braking threshold at 5 m unaffected |
 
 ### Why 13/15 for AI chat on the follow-up suite?
 

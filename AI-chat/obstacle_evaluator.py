@@ -28,6 +28,8 @@ def evaluate_obstacle(speed_kmh, distance_m, sensor_healthy) -> str:
         return "IDLE"
     if distance_m <= 5:
         return "BRAKE"
-    if distance_m <= 10:
+    # Warning distance rises to 15 m only when speed exceeds 50 km/h.
+    warning_distance = 15 if speed_kmh > 50 else 10
+    if distance_m <= warning_distance:
         return "WARNING"
     return "CLEAR"

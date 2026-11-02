@@ -18,6 +18,37 @@ def test_moving_thresholds(distance, expected):
     assert evaluate_obstacle(30, distance, True) == expected
 
 
+JUST_ABOVE_50 = math.nextafter(50, math.inf)
+JUST_ABOVE_15 = math.nextafter(15, math.inf)
+
+
+@pytest.mark.parametrize("speed, distance, expected", [
+    (50, 10, "WARNING"),
+    (50, 10.01, "CLEAR"),
+    (50, 15, "CLEAR"),
+    (JUST_ABOVE_50, 10.01, "WARNING"),
+    (JUST_ABOVE_50, 15, "WARNING"),
+    (JUST_ABOVE_50, JUST_ABOVE_15, "CLEAR"),
+    (60, 15, "WARNING"),
+    (60, JUST_ABOVE_15, "CLEAR"),
+])
+def test_warning_distance_extends_above_50_kmh(speed, distance, expected):
+    assert evaluate_obstacle(speed, distance, True) == expected
+
+
+@pytest.mark.parametrize("speed", [50, JUST_ABOVE_50, 60, 100])
+@pytest.mark.parametrize("distance, expected", [
+    (5, "BRAKE"),
+    (math.nextafter(5, math.inf), "WARNING"),
+])
+def test_braking_boundary_is_unchanged_at_any_speed(speed, distance, expected):
+    assert evaluate_obstacle(speed, distance, True) == expected
+
+
+def test_high_speed_rule_keeps_fault_priority():
+    assert evaluate_obstacle(60, 15, False) == "SENSOR_FAULT"
+
+
 @pytest.mark.parametrize("speed", [0, 0.0, -0.0, 1, 30.5])
 @pytest.mark.parametrize("distance", [0, 5, 10, 100])
 def test_sensor_fault_has_highest_priority(speed, distance):
